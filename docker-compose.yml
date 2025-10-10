@@ -29,7 +29,7 @@ services:
   jobmanager:
     #image: flink:1.20.0-scala_2.12
     build: .
-    command: jobmanager
+    command: ["/opt/flink/user_jobs/start_flink_and_jobs.sh"]
     ports:
       - "8081:8081"
     environment:
@@ -37,6 +37,7 @@ services:
     volumes:
       - ./flink_jobs:/opt/flink/user_jobs
       - ./flink_jars:/opt/flink/user_lib
+      # - ./start_flink_and_job.sh:/opt/flink/start_flink_and_job.sh
 
   taskmanager:
     #image: flink:1.20.0-scala_2.12
@@ -67,6 +68,7 @@ services:
       JAVA_OPTS: "-Xms256m -Xmx512m"
     volumes:
       - pinot_data:/opt/pinot/data
+      - pinot-controller-data:/var/pinot/data
       - ./pinot/schemas:/opt/pinot/config/schemas
       - ./pinot/tables:/opt/pinot/config/tables
       - ./pinot/register_pinot_configs.sh:/opt/pinot/register_pinot_configs.sh
@@ -96,6 +98,7 @@ services:
       JAVA_OPTS: "-Xms256m -Xmx512m -Dlog4j2.rootLogger.level=DEBUG"
     volumes:
       - pinot_data:/opt/pinot/data
+      - pinot-server-data:/var/pinot/data
 
   pinot-minion:
     image: apachepinot/pinot:latest
@@ -110,3 +113,5 @@ volumes:
   zookeeper_logs:
   kafka_data:
   pinot_data:
+  pinot-controller-data:
+  pinot-server-data:
