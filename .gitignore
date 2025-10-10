@@ -1,0 +1,84 @@
+# -------------------------
+# OS / System files
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.cache/
+logs/
+nohup.out
+
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+.env
+.venv
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+.pytest_cache/
+.ipynb_checkpoints/
+*.log
+
+# -------------------------
+# Docker / Compose
+# -------------------------
+# Ignore local volumes, containers, and build artifacts
+*.pid
+*.tar
+*.bak
+*.old
+docker-compose.override.yml
+.env.local
+.env.dev
+.env.test
+.env.prod
+
+# Named Docker volumes or data directories
+data/
+volumes/
+tmp/
+output/
+dist/
+build/
+
+# -------------------------
+# Flink / Pinot / Kafka data
+# -------------------------
+# Ignore any local cluster state or logs
+flink-*/*/log/
+flink-*/*/tmp/
+pinot-*/logs/
+pinot-*/data/
+kafka-logs/
+zookeeper/
+state/
+checkpoints/
+savepoints/
+
+# -------------------------
+# IDE / Editor
+# -------------------------
+.vscode/
+.idea/
+*.iml
+.project
+.pydevproject
+
+# -------------------------
+# Misc
+# -------------------------
+*.bak
+*.tmp
+*.out
+

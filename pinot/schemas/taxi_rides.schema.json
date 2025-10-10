@@ -1,0 +1,19 @@
+{
+  "schemaName": "taxi_rides",
+  "dimensionFieldSpecs": [
+    {"name": "ride_id", "dataType": "STRING"},
+    {"name": "pickup", "dataType": "STRING"},
+    {"name": "fare_category", "dataType": "STRING"}
+  ],
+  "metricFieldSpecs": [
+    {"name": "fare", "dataType": "DOUBLE"}
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ingestion_time",
+      "dataType": "LONG",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}

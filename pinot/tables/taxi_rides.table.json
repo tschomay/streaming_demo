@@ -1,0 +1,30 @@
+{
+  "tableName": "taxi_rides",
+  "tableType": "REALTIME",
+  "segmentsConfig": {
+    "timeColumnName": "ingestion_time",
+    "timeType": "MILLISECONDS",
+    "segmentPushType": "APPEND",
+    "replication": "1"
+  },
+  "tableIndexConfig": {},
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "ingestionConfig": {
+    "streamIngestionConfig": {
+      "streamConfigMaps": [
+        {
+          "streamType": "kafka",
+          "stream.kafka.topic.name": "taxi_rides_enriched",
+          "stream.kafka.consumer.type": "lowlevel",
+          "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaJSONMessageDecoder",
+          "stream.kafka.broker.list": "kafka:9092",
+	  "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory"
+        }
+      ]
+    }
+  }
+}
+

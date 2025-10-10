@@ -1,0 +1,112 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168    # 7 days (adjust if needed)
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  jobmanager:
+    #image: flink:1.20.0-scala_2.12
+    build: .
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    volumes:
+      - ./flink_jobs:/opt/flink/user_jobs
+      - ./flink_jars:/opt/flink/user_lib
+
+  taskmanager:
+    #image: flink:1.20.0-scala_2.12
+    build: .
+    command: taskmanager
+    depends_on:
+      - jobmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    volumes:
+      - ./flink_jobs:/opt/flink/user_jobs
+      - ./flink_jars:/opt/flink/user_lib
+
+  pinot-controller:
+    image: apachepinot/pinot:latest
+    # command: StartController -zkAddress zookeeper:2181
+    command: >
+      StartController
+      -zkAddress zookeeper:2181
+      -controllerHost 0.0.0.0
+      -controllerPort 9000
+      -clusterName PinotCluster
+    ports:
+      - "9000:9000"
+    depends_on:
+      - zookeeper
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - pinot_data:/opt/pinot/data
+      - ./pinot/schemas:/opt/pinot/config/schemas
+      - ./pinot/tables:/opt/pinot/config/tables
+      - ./pinot/register_pinot_configs.sh:/opt/pinot/register_pinot_configs.sh
+    #entrypoint: >
+    #  bash -c "/opt/pinot/register_pinot_configs.sh &&
+    #           StartController -zkAddress zookeeper:2181"
+
+  pinot-broker:
+    image: apachepinot/pinot:latest
+    command: StartBroker -zkAddress zookeeper:2181
+    depends_on:
+      - pinot-controller
+    ports:
+      - "8099:8099"  
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - ./pinot/schemas:/opt/pinot/config/schemas
+      - ./pinot/tables:/opt/pinot/config/tables
+
+  pinot-server:
+    image: apachepinot/pinot:latest
+    command: StartServer -zkAddress zookeeper:2181
+    depends_on:
+      - pinot-controller
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m -Dlog4j2.rootLogger.level=DEBUG"
+    volumes:
+      - pinot_data:/opt/pinot/data
+
+  pinot-minion:
+    image: apachepinot/pinot:latest
+    command: StartMinion -zkAddress zookeeper:2181
+    depends_on:
+      - pinot-controller
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+
+volumes:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+  pinot_data:
