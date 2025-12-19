@@ -68,7 +68,7 @@
    docker exec -it pinot-controller bin/pinot-admin.sh AddTable      -tableConfigFile /opt/pinot/fare_totals.table.json -exec
    ```
 
-6. Query Pinot (http://localhost:9000/query):
+9. Query Pinot (http://localhost:9000/query):
    ```sql
    SELECT pickup, SUM(total) AS grand_total
    FROM fare_totals
