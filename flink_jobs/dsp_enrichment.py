@@ -5,19 +5,19 @@ from pyflink.table import StreamTableEnvironment, EnvironmentSettings
 def main():
     # 1. Setup the Environment
     env = StreamExecutionEnvironment.get_execution_environment()
-    env.set_parallelism(1) # Keep it simple for the demo
+    env.set_parallelism(1)
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
-    # 2. Add Kafka Connector (Jar is already in the image at this path)
+    # 2. Add Kafka Connector
     t_env.get_config().get_configuration().set_string(
         "pipeline.jars", 
-        "file:///opt/flink/lib/flink-sql-connector-kafka-3.1.0-1.18.jar"
+        "file:///opt/flink/user_lib/flink-sql-connector-kafka-3.1.0-1.18.jar"
     )
 
     print("Creating Source Tables...")
 
-    # SOURCE 1: REQUESTS (The Context)
+    # SOURCE 1: REQUESTS
     t_env.execute_sql("""
         CREATE TABLE dsp_requests (
             request_id STRING,
@@ -28,7 +28,6 @@ def main():
             site_domain STRING,
             site_category STRING,
             publisher_id STRING,
-            -- Define Event Time for Flink Watermarks
             ts AS TO_TIMESTAMP_LTZ(timestamp_ts, 3),
             WATERMARK FOR ts AS ts - INTERVAL '5' SECOND
         ) WITH (
@@ -37,11 +36,12 @@ def main():
             'properties.bootstrap.servers' = 'kafka:9092',
             'properties.group.id' = 'flink_dsp_group',
             'scan.startup.mode' = 'latest-offset',
-            'format' = 'json'
+            'format' = 'json',
+            'scan.watermark.idle-timeout' = '5s'  -- <--- THE FIX
         )
     """)
 
-    # SOURCE 2: WINS (The Action)
+    # SOURCE 2: WINS
     t_env.execute_sql("""
         CREATE TABLE dsp_wins (
             request_id STRING,
@@ -59,11 +59,12 @@ def main():
             'properties.bootstrap.servers' = 'kafka:9092',
             'properties.group.id' = 'flink_dsp_group',
             'scan.startup.mode' = 'latest-offset',
-            'format' = 'json'
+            'format' = 'json',
+            'scan.watermark.idle-timeout' = '5s'  -- <--- THE FIX
         )
     """)
 
-    # SOURCE 3: CLICKS (The Label)
+    # SOURCE 3: CLICKS
     t_env.execute_sql("""
         CREATE TABLE dsp_clicks (
             request_id STRING,
@@ -77,11 +78,12 @@ def main():
             'properties.bootstrap.servers' = 'kafka:9092',
             'properties.group.id' = 'flink_dsp_group',
             'scan.startup.mode' = 'latest-offset',
-            'format' = 'json'
+            'format' = 'json',
+            'scan.watermark.idle-timeout' = '5s'  -- <--- THE CRITICAL FIX
         )
     """)
 
-    # SINK: ENRICHED DATA (The ML Dataset)
+    # SINK: ENRICHED DATA
     t_env.execute_sql("""
         CREATE TABLE dsp_enriched_impressions (
             request_id STRING,
@@ -102,12 +104,6 @@ def main():
 
     print("Executing Join Logic...")
 
-    # THE LOGIC:
-    # 1. Join Wins to Requests (Inner Join - we only care if we won)
-    #    Constraint: Win must happen within 1 minute of Request
-    # 2. Left Join Clicks (We want the row even if they didn't click)
-    #    Constraint: Click must happen within 2 minutes of Win
-    
     t_env.execute_sql("""
         INSERT INTO dsp_enriched_impressions
         SELECT 
@@ -122,10 +118,10 @@ def main():
         FROM dsp_wins w
         JOIN dsp_requests r 
             ON w.request_id = r.request_id 
-            AND w.ts BETWEEN r.ts AND r.ts + INTERVAL '1' MINUTE
+            AND w.ts BETWEEN r.ts AND r.ts + INTERVAL '5' SECOND
         LEFT JOIN dsp_clicks c 
             ON w.request_id = c.request_id 
-            AND c.ts BETWEEN w.ts AND w.ts + INTERVAL '2' MINUTE
+            AND c.ts BETWEEN w.ts AND w.ts + INTERVAL '11' SECOND
     """)
 
 if __name__ == '__main__':
