@@ -1,0 +1,43 @@
+{
+  "schemaName": "dsp_impressions",
+  "dimensionFieldSpecs": [
+    {
+      "name": "request_id",
+      "dataType": "STRING"
+    },
+    {
+      "name": "user_id",
+      "dataType": "STRING"
+    },
+    {
+      "name": "os",
+      "dataType": "STRING"
+    },
+    {
+      "name": "site_category",
+      "dataType": "STRING"
+    },
+    {
+      "name": "campaign_id",
+      "dataType": "STRING"
+    }
+  ],
+  "metricFieldSpecs": [
+    {
+      "name": "win_price",
+      "dataType": "DOUBLE"
+    },
+    {
+      "name": "is_clicked",
+      "dataType": "INT"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "event_time",
+      "dataType": "TIMESTAMP",
+      "format": "1:TIMESTAMP:SIMPLE_DATE_FORMAT:yyyy-MM-dd HH:mm:ss.SSS",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}

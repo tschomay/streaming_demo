@@ -126,6 +126,21 @@ services:
       streaming_net:
         ipv4_address: 172.28.0.23
 
+  pinot-init:
+    image: apachepinot/pinot:latest
+    container_name: pinot-init
+    restart: "no" # Only run once and exit
+    depends_on:
+      - pinot-controller
+    volumes:
+      # Mount your local config folder to the path expected by the script
+      - ./pinot:/opt/pinot/config 
+      # Mount the script itself
+      - ./pinot/register_pinot_configs.sh:/opt/pinot/register_pinot_configs.sh
+    entrypoint: ["/bin/bash", "/opt/pinot/register_pinot_configs.sh"]
+    networks:
+      - streaming_net
+    
 volumes:
   zookeeper_data:
   zookeeper_logs:
