@@ -81,4 +81,5 @@ savepoints/
 *.bak
 *.tmp
 *.out
+*.pkl
 

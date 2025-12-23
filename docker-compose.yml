@@ -48,7 +48,7 @@ services:
 
   taskmanager:
     build: .
-    command: taskmanager
+    command: taskmanager -Dtaskmanager.numberOfTaskSlots=4
     depends_on:
       - jobmanager
     environment:
