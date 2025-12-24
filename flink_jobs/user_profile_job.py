@@ -5,7 +5,7 @@ def main():
     env = StreamExecutionEnvironment.get_execution_environment()
     t_env = StreamTableEnvironment.create(env)
     
-    # 1. Read Enriched Impressions (History)
+    # 1. Read Enriched Impressions
     t_env.execute_sql("""
         CREATE TABLE dsp_enriched_impressions (
             user_id STRING,
@@ -23,8 +23,7 @@ def main():
         )
     """)
 
-    # 2. Define Output: Upsert Kafka (Compacted Topic)
-    # This topic will hold the "latest" state for every user
+    # 2. Define Output: Upsert Kafka (Now with Timestamp)
     t_env.execute_sql("""
         CREATE TABLE user_profiles (
             user_id STRING,
@@ -33,6 +32,7 @@ def main():
             tech_clicks BIGINT,
             lifestyle_views BIGINT,
             lifestyle_clicks BIGINT,
+            update_time TIMESTAMP(3),  -- <--- ADDED TIMESTAMP
             PRIMARY KEY (user_id) NOT ENFORCED
         ) WITH (
             'connector' = 'upsert-kafka',
@@ -43,7 +43,7 @@ def main():
         )
     """)
 
-    # 3. Calculate Aggregates
+    # 3. Calculate Aggregates (Tracking MAX time)
     print("Building User Profiles...")
     t_env.execute_sql("""
         INSERT INTO user_profiles
@@ -53,7 +53,8 @@ def main():
             SUM(CASE WHEN site_category = 'Tech' THEN 1 ELSE 0 END) as tech_views,
             SUM(CASE WHEN site_category = 'Tech' THEN is_clicked ELSE 0 END) as tech_clicks,
             SUM(CASE WHEN site_category = 'Lifestyle' THEN 1 ELSE 0 END) as lifestyle_views,
-            SUM(CASE WHEN site_category = 'Lifestyle' THEN is_clicked ELSE 0 END) as lifestyle_clicks
+            SUM(CASE WHEN site_category = 'Lifestyle' THEN is_clicked ELSE 0 END) as lifestyle_clicks,
+            MAX(event_time) as update_time -- <--- TRACK LATEST EVENT
         FROM dsp_enriched_impressions
         GROUP BY user_id
     """)
