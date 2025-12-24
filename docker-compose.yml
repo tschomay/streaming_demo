@@ -65,7 +65,7 @@ services:
     command: >
       StartController
       -zkAddress zookeeper:2181
-      -controllerHost 0.0.0.0
+      -controllerHost pinot-controller
       -controllerPort 9000
       -clusterName PinotCluster
     ports:
@@ -133,14 +133,69 @@ services:
     depends_on:
       - pinot-controller
     volumes:
-      # Mount your local config folder to the path expected by the script
       - ./pinot:/opt/pinot/config 
-      # Mount the script itself
       - ./pinot/register_pinot_configs.sh:/opt/pinot/register_pinot_configs.sh
-    entrypoint: ["/bin/bash", "/opt/pinot/register_pinot_configs.sh"]
+    #entrypoint: ["/bin/bash", "/opt/pinot/register_pinot_configs.sh"]
+    entrypoint: 
+      - /bin/bash
+      - -c
+      - >
+        echo "Waiting for Pinot Controller..." &&
+        while ! curl -s http://pinot-controller:9000/health > /dev/null; do sleep 5; done &&
+        echo "Controller is up! Registering configs..." &&
+        /opt/pinot/register_pinot_configs.sh
     networks:
       - streaming_net
-    
+   
+  # SIMULATOR: Runs automatically on startup
+  simulator:
+    build: .
+    entrypoint: ["python", "/opt/flink/user_jobs/dsp_simulator.py"]
+    depends_on:
+      - kafka
+    volumes:
+      - ./flink_jobs:/opt/flink/user_jobs
+    networks:
+      - streaming_net
+
+  # STREAMLIT: The Dashboard
+  streamlit:
+    image: python:3.9-slim
+    container_name: dsp_dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app
+    working_dir: /app
+    # Install dependencies on startup (or build a custom image for speed)
+    command: >
+      bash -c "pip install streamlit pinotdb pandas && streamlit run app.py"
+    networks:
+      - streaming_net
+
+  # JOB SUBMITTER: Submits Flink jobs once the JobManager is ready
+  job-submitter:
+    build: .
+    container_name: job_submitter
+    restart: "no"
+    depends_on:
+      - jobmanager
+    volumes:
+      - ./flink_jobs:/opt/flink/user_jobs
+    # Wait for JobManager to listen on 8081, then submit jobs
+    command: >
+      bash -c "
+      echo 'Waiting for JobManager...' &&
+      while ! curl -s http://jobmanager:8081 > /dev/null; do sleep 5; done &&
+      echo 'JobManager is up! Submitting jobs...' &&
+      flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/dsp_enrichment.py &&
+      flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/dsp_inference.py &&
+      flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/user_profile_job.py
+      "
+    networks:
+      - streaming_net
+
+
 volumes:
   zookeeper_data:
   zookeeper_logs:

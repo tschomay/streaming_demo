@@ -52,12 +52,6 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
-    # Add Kafka Connector
-    t_env.get_config().get_configuration().set_string(
-        "pipeline.jars", 
-        "file:///opt/flink/user_lib/flink-sql-connector-kafka-3.1.0-1.18.jar"
-    )
-
     # Register the UDF
     predict_ctr = udf(PredictCTR(), result_type=DataTypes.DOUBLE())
     t_env.create_temporary_system_function("predict_ctr", predict_ctr)

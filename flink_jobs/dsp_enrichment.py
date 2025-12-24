@@ -9,12 +9,6 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
-    # 2. Add Kafka Connector
-    t_env.get_config().get_configuration().set_string(
-        "pipeline.jars", 
-        "file:///opt/flink/user_lib/flink-sql-connector-kafka-3.1.0-1.18.jar"
-    )
-
     print("Creating Source Tables...")
 
     # SOURCE 1: REQUESTS
