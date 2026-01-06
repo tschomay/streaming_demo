@@ -146,7 +146,22 @@ services:
         /opt/pinot/register_pinot_configs.sh
     networks:
       - streaming_net
-   
+  
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8085:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+    networks:
+      - streaming_net
+
   # SIMULATOR: Runs automatically on startup
   simulator:
     build: .
@@ -188,9 +203,14 @@ services:
       echo 'Waiting for JobManager...' &&
       while ! curl -s http://jobmanager:8081 > /dev/null; do sleep 5; done &&
       echo 'JobManager is up! Submitting jobs...' &&
+      echo 'Submitting Enrichment Job...' &&
       flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/dsp_enrichment.py &&
-      flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/dsp_inference.py &&
+      echo 'Submitting User Profile Job...' &&
       flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/user_profile_job.py
+      echo 'Waiting 15 sec for topic creation...' &&
+      sleep 15 &&
+      echo 'Submitting Inference Job...' &&
+      flink run -m jobmanager:8081 -d -Drestart-strategy=fixed-delay -Drestart-strategy.fixed-delay.attempts=10 -Drestart-strategy.fixed-delay.delay=5s -py /opt/flink/user_jobs/dsp_inference.py
       "
     networks:
       - streaming_net
