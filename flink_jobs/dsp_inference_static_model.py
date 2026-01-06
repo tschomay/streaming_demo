@@ -1,6 +1,4 @@
 import pickle
-import os
-import time
 import pandas as pd
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import StreamTableEnvironment, EnvironmentSettings, DataTypes
@@ -8,40 +6,13 @@ from pyflink.table.udf import ScalarFunction, udf
 
 class PredictCTR(ScalarFunction):
     def open(self, function_context):
-        self.model_path = '/opt/flink/user_jobs/ctr_model_online.pkl'
-        self.cols_path = '/opt/flink/user_jobs/model_columns_v2.pkl'
-        self.last_reload = 0
-        self.reload_interval = 10  # Check for new model every 10 seconds
-        self.model = None
-        
-        # Load columns once
-        with open(self.cols_path, 'rb') as f:
+        with open('/opt/flink/user_jobs/ctr_model_v2.pkl', 'rb') as f:
+            self.model = pickle.load(f)
+        with open('/opt/flink/user_jobs/model_columns_v2.pkl', 'rb') as f:
             self.model_columns = pickle.load(f)
 
-        self._load_model()
-
-    def _load_model(self):
-        # Try loading the Online model, fall back to Batch V2 if not ready
-        path_to_load = self.model_path
-        if not os.path.exists(path_to_load):
-            path_to_load = '/opt/flink/user_jobs/ctr_model_v2.pkl'
-        
+    def eval(self, os, site_category, total_views, tech_views, lifestyle_views):
         try:
-            with open(path_to_load, 'rb') as f:
-                self.model = pickle.load(f)
-            # print(f"Loaded model from {path_to_load}") 
-        except Exception as e:
-            print(f"Error loading model: {e}")
-
-    def eval(self, os_val, site_category, total_views, tech_views, lifestyle_views):
-        # 1. Periodic Reload Check
-        now = time.time()
-        if now - self.last_reload > self.reload_interval:
-            self._load_model()
-            self.last_reload = now
-
-        try:
-            # ... (Rest of logic remains exactly the same) ...
             if total_views is None or total_views == 0:
                 frac_tech = 0.0
                 frac_lifestyle = 0.0
@@ -51,7 +22,7 @@ class PredictCTR(ScalarFunction):
 
             features = {col: 0 for col in self.model_columns}
             
-            os_col = f"os_{os_val}"
+            os_col = f"os_{os}"
             cat_col = f"site_category_{site_category}"
             if os_col in features: features[os_col] = 1
             if cat_col in features: features[cat_col] = 1
@@ -60,12 +31,8 @@ class PredictCTR(ScalarFunction):
             if 'frac_lifestyle' in features: features['frac_lifestyle'] = frac_lifestyle
 
             df_features = pd.DataFrame([features], columns=self.model_columns)
-            
-            # Predict
-            if self.model:
-                prob = self.model.predict_proba(df_features)[0][1]
-                return float(prob)
-            return 0.0
+            prob = self.model.predict_proba(df_features)[0][1]
+            return float(prob)
             
         except Exception as e:
             return 0.0

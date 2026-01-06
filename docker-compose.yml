@@ -209,6 +209,10 @@ services:
       flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/user_profile_job.py
       echo 'Waiting 15 sec for topic creation...' &&
       sleep 15 &&
+      echo 'Submitting Online Learner...' &&
+      flink run -m jobmanager:8081 -d -py /opt/flink/user_jobs/online_learner.py &&
+      echo 'Waiting 15 sec for initialization...' &&
+      sleep 15 &&
       echo 'Submitting Inference Job...' &&
       flink run -m jobmanager:8081 -d -Drestart-strategy=fixed-delay -Drestart-strategy.fixed-delay.attempts=10 -Drestart-strategy.fixed-delay.delay=5s -py /opt/flink/user_jobs/dsp_inference.py
       "
